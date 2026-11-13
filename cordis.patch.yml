@@ -1,0 +1,5 @@
+# dsh-html-render: HTML/CSS 渲染、交互预览与多格式导出。
+# The insert row is what makes this bundle load; keep the id on its own line.
+- insert:
+    - id: dsh-html-render
+      name: 'dsh-html-render'

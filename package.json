@@ -1,0 +1,52 @@
+{
+  "name": "dsh-html-render",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "HTML renderer for DeepSeek Harness: interactive iframe preview in the panel, headless-Edge rendering for PNG/JPG/PDF/SVG export, and an html_render tool for the agent.",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "html",
+    "render",
+    "screenshot",
+    "preview",
+    "export"
+  ],
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "ARCHITECTURE.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/",
+    "smoke": "node test/render.smoke.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  },
+  "license": "MIT"
+}
