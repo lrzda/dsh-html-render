@@ -11,3 +11,7 @@ test/out/
 *.log
 .DS_Store
 Thumbs.db
+
+# asar 分析过程中产生的代码转储（体积大、非本项目代码，但分析脚本本身要提交）
+tools/*-dump.js
+tools/ui-tool-client.js
