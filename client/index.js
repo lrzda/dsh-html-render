@@ -1,53 +1,42 @@
 /**
- * 客户端入口：只做 slot 注册和依赖装配。
+ * 客户端入口：只保留"会话内渲染"这一件事。
  *
- * DSH 会把这里的返回值当作插件对象使用（`inject` 声明依赖、`apply` 执行注册）。
- * 构建脚本会把这个模块的默认导出原样交给 `window.__ModuleLoader__`。
+ * 定位变更（2026-11-23 用户确认）：
+ *   右侧的 HTML 工作台（sidebar.panellist + main）已移除 —— 它的用处是把 HTML 贴进面板再导出，
+ *   而真正需要的能力是"在会话里随时预览"，也就是 markdown 代码块级渲染。
+ *
+ * 现在只注册两处，都在会话里：
+ *   1. `conversation.chat.markdown.fence`（key: html）—— 把 ```html 围栏渲染成沙箱 iframe，
+ *      位置由写在哪里决定，可以出现任意多次，这才是"随时预览"；
+ *   2. `conversation.chat.turnTail` —— 当某一轮通过 html_render 工具产出过图片时，
+ *      在该轮末尾补一张结果图（例如导出的 PNG/PDF 预览）。
+ *
+ * 面板相关的源码（panel/preview/export-menu/host-api）仍留在 client/ 目录里，
+ * 只是不再被打包导入，需要时可以随时接回来。
  */
-import React from 'react';
-
-import { api } from './host-api.js';
-import { createExportMenu } from './export-menu.js';
-import { createPanel } from './panel.js';
-import { createPreview, snapshotFrame } from './preview.js';
-import { CSS, insertStyles } from './styles.js';
 import { en, zh } from './i18n.js';
+import { HtmlFence } from './fence.js';
+import { TurnTailProbe } from './turn-tail.js';
+import { CSS, insertStyles } from './styles.js';
 
 const NS = 'dsh-html-render';
-const PANEL_ID = 'dsh-html-render';
-
-// 依赖注入：把 React 和跨模块能力交给各组件，组件自己不 import 别的东西
-const Preview = createPreview(React);
-const ExportMenu = createExportMenu(React);
-const Panel = createPanel(React, { Preview, ExportMenu, api, snapshotFrame });
-
-/** 侧边栏图标：一个带尖括号的画框。 */
-function PanelIcon({ size }) {
-  const px = typeof size === 'number' ? size : 16;
-  return React.createElement(
-    'svg',
-    {
-      viewBox: '0 0 24 24',
-      width: px,
-      height: px,
-      'aria-hidden': true,
-      fill: 'none',
-      stroke: 'currentColor',
-      strokeWidth: 1.7,
-      strokeLinecap: 'round',
-      strokeLinejoin: 'round',
-    },
-    React.createElement('rect', { x: 3, y: 4, width: 18, height: 16, rx: 3 }),
-    React.createElement('path', { d: 'M8.5 9.5 6 12l2.5 2.5' }),
-    React.createElement('path', { d: 'M15.5 9.5 18 12l-2.5 2.5' }),
-  );
-}
 
 export default {
   inject: ['slots', 'locale'],
 
   apply(ctx) {
     const locale = ctx.get('locale');
+
+    // 自诊断：确认这个 client bundle 真的被加载并执行到了 apply。
+    try {
+      fetch('/api/html-render/', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'diag', step: 'client-apply', ns: NS }),
+      }).catch(() => {});
+    } catch {
+      /* 诊断失败不影响功能 */
+    }
 
     if (locale) {
       ctx.effect(() => locale.register(NS, 'zh', zh), 'dsh-html-render: locale zh');
@@ -56,25 +45,25 @@ export default {
 
     ctx.effect(() => insertStyles(NS, CSS), 'dsh-html-render: styles');
 
-    const label = () => {
-      if (!locale) return 'HTML Render';
-      const bound = locale.bind(NS);
-      const value = typeof bound === 'function' ? bound('open') : undefined;
-      return typeof value === 'string' ? value : 'HTML Render';
-    };
-
-    // 侧边栏入口
-    ctx.slots.inject('sidebar.panellist', () =>
+    // 核心：markdown 代码块级渲染。```html 围栏 → 沙箱 iframe，就地预览。
+    ctx.slots.inject('conversation.chat.markdown.fence', () =>
       ctx.slots.register(
-        { name: 'sidebar.panellist', id: PANEL_ID, order: 60, label },
-        (props) => React.createElement(PanelIcon, { size: props && props.size }),
+        {
+          name: 'conversation.chat.markdown.fence',
+          key: 'html',
+          id: 'dsh-html-render/fence/html',
+          order: 10,
+        },
+        HtmlFence,
       ),
     );
 
-    // 主面板：点侧边栏图标后显示的就是它
-    ctx.slots.inject('main', () =>
-      ctx.slots.register({ name: 'main', key: PANEL_ID }, () =>
-        React.createElement(Panel, { locale }),
+    // 辅助：某一轮通过 html_render 工具产出过图片时，在轮次末尾补一张结果图。
+    // 判据是"产物时间落在该轮时间窗内"，不会污染其它轮次或会话。
+    ctx.slots.inject('conversation.chat.turnTail', () =>
+      ctx.slots.register(
+        { name: 'conversation.chat.turnTail', id: 'dsh-html-render-tail', order: 10 },
+        TurnTailProbe,
       ),
     );
   },

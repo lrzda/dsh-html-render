@@ -1,6 +1,25 @@
 # dsh-html-render · 架构设计
 
-> 一个 DSH 插件：把任意前端界面（HTML/CSS/JS）渲染出来 —— 你自己在 DSH 里交互预览，我在 agent 侧拿到真实截图，想导出时一键出 PNG / JPG / PDF / SVG。
+> 一个 DSH 插件：让写出来的前端页面**直接出现在会话里**，并可导出 PNG / JPG / PDF / SVG。
+
+---
+
+## 0. 定位与实测结论（2026-11-23）
+
+早期版本带一个右侧 HTML 工作台（贴代码 → 预览 → 导出）。实际使用后判定它是多余的中间层：真正需要的是"写出来的页面直接出现在对话里"。工作台已移除，相关源码保留在 `client/` 但不再打包。
+
+以下是走通"会话内渲染"过程中**被实测确认**的结论，记在这里是为了让后来者省掉重复摸索：
+
+| 结论 | 依据 |
+|---|---|
+| 会话正文走 markdown，**原生 HTML 一律被转义** | 在回复里直接写 `<div style=…>` 只显示成文本 |
+| **`conversation.chat.markdown.fence` 可用**（0.2.2-rc.1） | ui-chat 源码中确实有 `renderSlot('conversation.chat.markdown.fence', fence, { entryKey: fence.lang, children })`；注册 `key: 'html'` 后实测就地渲染成功 |
+| `tool.call.toolview` 对第三方插件**不渲染返回值** | 组件被调用（宿主诊断日志有记录），但纯内联样式的红块也不进入 DOM。官方 ui-skill 用同一接口可显示，说明另有未公开的包装要求 |
+| `conversation.chat.turnTail` 可用，但它是**全局位置** | 每轮都会调用；必须用 `turn.start.time ≤ 产物时间 ≤ turn.end.time` 判断，否则会污染所有会话 |
+| 工具的大参数会被 **spill** | 客户端 `block.args` 变成 `chunks/object/sealed`，拿不到原始 HTML，只能靠产物 id 走 HTTP 取图 |
+| `GET /api/…` **到不了插件路由** | 服务器日志零记录（被前端静态资源处理截走）；同一路径 `POST` 正常，取二进制也得用 POST |
+| 桌面端 **Ctrl+F5 无效** | Electron 窗口；client 改动必须重启 DSH 才生效 |
+| 模板字符串里**不能出现反引号** | CSS 注释里写 markdown 围栏的反引号会截断字符串，导致构建失败（踩过两次） |
 
 ---
 

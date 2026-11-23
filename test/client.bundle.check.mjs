@@ -87,26 +87,37 @@ for (const spec of registered) {
   console.log(`  - ${spec.name}  id/key: ${spec.id ?? spec.key ?? '(none)'}  order: ${spec.order ?? '-'}`);
 }
 
-const sidebar = registered.find((spec) => spec.name === 'sidebar.panellist');
-const main = registered.find((spec) => spec.name === 'main');
+// 插件定位已变更：右侧工作台（sidebar.panellist / main）已移除，
+// 核心是会话内的 markdown 代码块渲染，以及轮次末尾的结果图。
+const fence = registered.find((spec) => spec.name === 'conversation.chat.markdown.fence');
+const tail = registered.find((spec) => spec.name === 'conversation.chat.turnTail');
 
-check(sidebar !== undefined, 'no sidebar.panellist slot registered');
-check(sidebar?.id === 'dsh-html-render', 'sidebar.panellist id is not dsh-html-render');
-check(main !== undefined, 'no main slot registered');
-check(main?.key === 'dsh-html-render', 'main slot key is not dsh-html-render');
+check(fence !== undefined, 'no conversation.chat.markdown.fence slot registered');
+check(fence?.key === 'html', 'fence key is not html');
+check(tail !== undefined, 'no conversation.chat.turnTail slot registered');
+check(
+  !registered.some((spec) => spec.name === 'sidebar.panellist'),
+  'workbench sidebar slot should be gone',
+);
 
-// 真渲染一次面板组件：slot 里注册的是 `() => createElement(Panel, …)`，
-// 所以先拿到那个元素，再调用它 type(面板函数) 本身。hooks 用 stub，
-// 于是这里能验证"组件函数体执行时不抛异常"，而不是只验证 slot 名字对不对。
-if (main?.component) {
+// 真渲染一次 fence 组件：确认组件函数体不抛异常
+if (fence?.component) {
   try {
-    const element = main.component({ locale: null });
-    const rendered = typeof element?.type === 'function' ? element.type(element.props ?? {}) : element;
-    check(rendered !== undefined && rendered !== null, 'panel component rendered nothing');
-    const className = rendered?.props?.className ?? '(not a plain element)';
-    console.log(`panel root    : ${String(className)}`);
+    const rendered = fence.component({ code: '<h1>hi</h1>', streaming: false, children: 'source' });
+    check(rendered !== undefined && rendered !== null, 'fence component rendered nothing');
+    console.log(`fence root    : ${String(rendered?.props?.className ?? '(not a plain element)')}`);
   } catch (error) {
-    failures.push(`panel component threw during render: ${error.message}`);
+    failures.push(`fence component threw during render: ${error.message}`);
+  }
+}
+
+// 流式输出期间必须原样交还宿主 children（半截 HTML 不该被渲染）
+if (fence?.component) {
+  try {
+    const passthrough = fence.component({ code: '<h1>partial', streaming: true, children: 'source' });
+    check(passthrough === 'source', 'fence should return children while streaming');
+  } catch (error) {
+    failures.push(`fence streaming path threw: ${error.message}`);
   }
 }
 

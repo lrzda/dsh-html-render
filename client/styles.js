@@ -108,6 +108,98 @@ export const CSS = `
 .dhr-notice { font-size: 12.5px; padding: 8px 12px; border-radius: 10px; }
 .dhr-notice-ok { background: rgba(52,211,153,.12); color: #6ee7b7; }
 .dhr-notice-error { background: rgba(248,113,113,.12); color: #fca5a5; }
+
+/* 会话内的 html_render 工具卡片 */
+.dhr-tv {
+  display: flex; flex-direction: column; gap: 8px; margin: 8px 0;
+  padding: 10px 12px; border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-2, rgba(255,255,255,.04));
+  border: 1px solid var(--dsw-alias-border-default, rgba(255,255,255,.1));
+}
+.dhr-tv-head { display: flex; align-items: center; gap: 8px; }
+.dhr-tv-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: #94a3b8; }
+.dhr-tv-dot[data-state="run"] { background: #fbbf24; }
+.dhr-tv-dot[data-state="ok"] { background: #34d399; }
+.dhr-tv-dot[data-state="error"] { background: #f87171; }
+.dhr-tv-title { font-size: 13px; font-weight: 600; color: var(--dsw-alias-label-primary, #e6e8ee); }
+.dhr-tv-meta { font-size: 11.5px; color: var(--dsw-alias-label-secondary, #98a2b3); font-family: ui-monospace, Consolas, monospace; }
+.dhr-tv-toggle {
+  margin-left: auto; appearance: none; cursor: pointer;
+  border: 1px solid var(--dsw-alias-border-default, rgba(255,255,255,.14));
+  background: transparent; color: inherit; font: inherit; font-size: 12px;
+  height: 24px; padding: 0 10px; border-radius: 12px;
+}
+.dhr-tv-toggle:hover { background: var(--dsw-alias-bg-layer-3, rgba(255,255,255,.08)); }
+.dhr-tv-body { margin-top: 6px; }
+.dhr-tv-body > summary {
+  cursor: pointer; font-size: 12px; color: #93c5fd; padding: 2px 0;
+  list-style: none;
+}
+.dhr-tv-body > summary::-webkit-details-marker { display: none; }
+.dhr-tv-body > summary::before { content: '▸ '; }
+.dhr-tv-body[open] > summary::before { content: '▾ '; }
+
+/* html 围栏渲染成沙箱 iframe（注意：本文件是模板字符串，注释里不要出现反引号） */
+.dhr-fence {
+  margin: 10px 0; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-default, rgba(255,255,255,.12));
+  background: #0b1020;
+}
+.dhr-fence-frame {
+  display: block; width: 100%; height: 420px; border: 0; background: #fff;
+}
+.dhr-fence-source {
+  padding: 6px 12px 8px; font-size: 12px;
+  border-top: 1px solid var(--dsw-alias-border-default, rgba(255,255,255,.08));
+  color: var(--dsw-alias-label-secondary, #98a2b3);
+}
+.dhr-fence-source > summary { cursor: pointer; padding: 2px 0; }
+
+/* 会话 turn 尾部的渲染结果卡片 */
+.dhr-tail {
+  display: inline-flex; align-items: center; gap: 8px; margin: 6px 0;
+  padding: 6px 12px; border-radius: 999px;
+  background: rgba(77,107,254,.14); border: 1px solid rgba(77,107,254,.5);
+  font-size: 12px; color: #93c5fd;
+}
+.dhr-tail-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #4d6bfe;
+  box-shadow: 0 0 8px rgba(77,107,254,.9);
+}
+.dhr-tail-text { font-weight: 600; }
+.dhr-tail-sub { color: var(--dsw-alias-label-secondary, #98a2b3); }
+.dhr-tail-wrap { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; }
+.dhr-tail-link { display: block; text-decoration: none; }
+.dhr-tail-image {
+  display: block; width: 100%; max-width: 720px; height: auto; border-radius: 10px;
+  border: 1px solid var(--dsw-alias-border-default, rgba(255,255,255,.12));
+  background: #fff; cursor: zoom-in;
+}
+/* 点击放大：贴满视口，再点一次还原（不依赖新标签页与 blob 生命周期） */
+.dhr-tail-image-zoom {
+  position: fixed; inset: 0; z-index: 9999;
+  width: 100vw; height: 100vh; max-width: none;
+  object-fit: contain; border-radius: 0; border: 0;
+  background: rgba(3, 7, 18, .92); cursor: zoom-out;
+}
+.dhr-tv-frame {
+  width: 100%; border: 0; border-radius: 10px; background: #fff; display: block;
+  transition: height .16s ease;
+}
+.dhr-tv-image {
+  display: block; width: 100%; height: auto; border-radius: 10px; background: #fff;
+  border: 1px solid var(--dsw-alias-border-default, rgba(255,255,255,.1));
+}
+.dhr-tv-result {
+  font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; line-height: 1.6;
+  white-space: pre-wrap; color: var(--dsw-alias-label-secondary, #98a2b3);
+  max-height: 88px; overflow: auto;
+}
+.dhr-tv-error {
+  margin: 8px 0; padding: 10px 12px; border-radius: 10px;
+  background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.4);
+  color: #fca5a5; font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+}
 `;
 
 /** 把样式插进文档 head，返回移除函数（供 ctx.effect 清理）。 */
